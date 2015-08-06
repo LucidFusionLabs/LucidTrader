@@ -161,8 +161,8 @@ extern "C" int main(int argc, const char *argv[]) {
     if (app->Init()) { app->Free(); return -1; }
 
     BindMap *binds = screen->binds = new BindMap();
-    binds->Add(Bind(Key::Backquote, Bind::CB(bind([&](){ screen->console->Toggle(); }))));
-    binds->Add(Bind(Key::Escape,    Bind::CB(bind(&Shell::quit, &app->shell, vector<string>()))));
+    binds->Add(Bind(Key::Backquote, Bind::CB(bind(&Shell::console, &app->shell, vector<string>()))));
+    binds->Add(Bind(Key::Escape,    Bind::CB(bind(&Shell::quit,    &app->shell, vector<string>()))));
 
     if (!FLAGS_quote_dump.empty()) {
         ProtoFile pf(FLAGS_quote_dump.c_str()); Quote entry;
