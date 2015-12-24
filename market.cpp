@@ -17,7 +17,7 @@
  */
 
 #include "market.pb.h"
-#include "crawler/crawler.pb.h"
+#include "web/crawler.pb.h"
 
 #include "lfapp/lfapp.h"
 #include "lfapp/dom.h"
@@ -27,8 +27,8 @@
 #include "lfapp/network.h"
 
 #include "market.h"
-#include "crawler/crawler.h"
-#include "crawler/yahoo_finance.h"
+#include "web/crawler.h"
+#include "web/yahoo_finance.h"
 
 namespace LFL {
 DEFINE_string(MarketDir, "/Users/p/lfl/market/", "Market data directory");
