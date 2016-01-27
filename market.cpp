@@ -46,182 +46,181 @@ vector<Watcher*> watchers;
 MarketData *marketData = NULL;
 
 struct QuoteLogger {
-    typedef map<string, Quote> QuoteMap;
-    QuoteMap quotes;
-    ProtoFile out;
-    QuoteLogger() {}
+  typedef map<string, Quote> QuoteMap;
+  QuoteMap quotes;
+  ProtoFile out;
+  QuoteLogger() {}
 
-    bool Update(const Quote &next) {
-        if (next.info().symbol().empty()) return false;
-        Quote *last = &quotes[next.info().symbol().c_str()];
-        if (!out.Opened() || next.value().time() <= last->value().time()) return false;
-        if (next.value().response_time() - next.value().time() >= Minutes(60).count()) return false;
-        out.Add(&next, 0);
-        *last = next;
-        return true;
-    }
+  bool Update(const Quote &next) {
+    if (next.info().symbol().empty()) return false;
+    Quote *last = &quotes[next.info().symbol().c_str()];
+    if (!out.Opened() || next.value().time() <= last->value().time()) return false;
+    if (next.value().response_time() - next.value().time() >= Minutes(60).count()) return false;
+    out.Add(&next, 0);
+    *last = next;
+    return true;
+  }
 };
 
 struct MyYahooFinanceApi : public YahooFinanceApi {
-    MyYahooFinanceApi() : out(NULL) {}
-    QuoteLogger *out;
-    void Results() {
-        for (vector<Quote>::iterator it = results.begin(); it != results.end(); ++it) {
-            // INFO("quote: ", it->DebugString());
-            if (out && out->Update(*it) && marketData) marketData->AddQuote(*it);
-        }
-        results.clear();
+  MyYahooFinanceApi() : out(NULL) {}
+  QuoteLogger *out;
+  void Results() {
+    for (vector<Quote>::iterator it = results.begin(); it != results.end(); ++it) {
+      // INFO("quote: ", it->DebugString());
+      if (out && out->Update(*it) && marketData) marketData->AddQuote(*it);
     }
+    results.clear();
+  }
 } *yahoo_finance = 0;
 
 struct Watcher {
-    Crawler *crawler;
-    string name;
-    vector<string> url;
-    QuoteLogger quote_logger;
-    int delay_mins, trading_period, last_trading_period;
-    Time last, frequency, trading_period_remaining;
-    Watcher(Crawler *c, const string &n) : crawler(c), name(n), last(0), frequency(Seconds(30)), trading_period_remaining(0), delay_mins(0), trading_period(0), last_trading_period(0) {}
+  Crawler *crawler;
+  string name;
+  vector<string> url;
+  QuoteLogger quote_logger;
+  int delay_mins, trading_period, last_trading_period;
+  Time last, frequency, trading_period_remaining;
+  Watcher(Crawler *c, const string &n) : crawler(c), name(n), last(0), frequency(Seconds(30)), trading_period_remaining(0), delay_mins(0), trading_period(0), last_trading_period(0) {}
 
-    void Update() {
-        Time now = Now();
-        trading_period = TradingPeriod::Now(now, &trading_period_remaining, Minutes(delay_mins));
-        if (!app->frames_ran || trading_period != last_trading_period) {
-            INFO(name, ": ", TradingPeriod::ToString(trading_period, trading_period_remaining));
-            quote_logger.out.Open((trading_period == TradingPeriod::MARKET) ? MarketData::filename(name, now).c_str() : 0);
-        }
-        last_trading_period = trading_period;
-
-        if (!app->frames_ran || trading_period == TradingPeriod::MARKET) {
-            if (last + frequency >= now) return;
-            for (int i = 0; i < url.size(); ++i) crawler->queue[0].add(url[i].c_str());
-            last = now;
-        }
+  void Update() {
+    Time now = Now();
+    trading_period = TradingPeriod::Now(now, &trading_period_remaining, Minutes(delay_mins));
+    if (!app->frames_ran || trading_period != last_trading_period) {
+      INFO(name, ": ", TradingPeriod::ToString(trading_period, trading_period_remaining));
+      quote_logger.out.Open((trading_period == TradingPeriod::MARKET) ? MarketData::Filename(name, now).c_str() : 0);
     }
+    last_trading_period = trading_period;
+
+    if (!app->frames_ran || trading_period == TradingPeriod::MARKET) {
+      if (last + frequency >= now) return;
+      for (int i = 0; i < url.size(); ++i) crawler->queue[0].Add(url[i].c_str());
+      last = now;
+    }
+  }
 };
 
 struct TradingPlatformGUI : public GUI {
-    Widget::Scrollbar scrollbar;
-    TradingPlatformGUI(LFL::Window *W, Box w) : GUI(W, w), scrollbar(this) {}
-    void Layout() {
-        scrollbar.LayoutAttached(box);
-        Flow flow(&box, Fonts::Default(), &child_box);
-        flow.p.y -= scrollbar.scrolled * scrollbar.doc_height;
-        for (MarketData::SymbolMap::iterator i = marketData->symbol.begin(); i != marketData->symbol.end(); ++i) {
-            if (!i->second.chart.geom) {
-                Waveform WF(point(screen->width*.95, screen->height*.2), &Color::white, &i->second);
-                i->second.chart = WF;
-            }
-            flow.AppendText(i->first);
-            flow.AppendNewlines(1);
-            flow.AppendBox(i->second.chart.width, i->second.chart.height, &i->second.chart);
-            flow.AppendNewlines(2);
-        }
-        scrollbar.SetDocHeight(flow.Height());
+  Widget::Slider scrollbar;
+  TradingPlatformGUI(LFL::Window *W, Box w) : GUI(W, w), scrollbar(this) {}
+  void Layout() {
+    scrollbar.LayoutAttached(box);
+    Flow flow(&box, Fonts::Default(), &child_box);
+    flow.p.y -= scrollbar.scrolled * scrollbar.doc_height;
+    for (MarketData::SymbolMap::iterator i = marketData->symbol.begin(); i != marketData->symbol.end(); ++i) {
+      if (!i->second.chart.geom) {
+        Waveform WF(point(screen->width*.95, screen->height*.2), &Color::white, &i->second);
+        i->second.chart = WF;
+      }
+      flow.AppendText(i->first);
+      flow.AppendNewlines(1);
+      flow.AppendBox(i->second.chart.width, i->second.chart.height, &i->second.chart);
+      flow.AppendNewlines(2);
     }
-    void Draw() { scrollbar.Update(); GUI::Draw(); }
+    scrollbar.SetDocHeight(flow.Height());
+  }
+  void Draw() { scrollbar.Update(); GUI::Draw(); }
 } *tradingPlatformGUI = NULL;
 
-int Frame(LFL::Window *W, unsigned clicks, unsigned mic_samples, bool cam_sample, int flag) {
-    Time now = Now();
-    if (FLAGS_lfapp_video) {
-        screen->gd->DrawMode(DrawMode::_2D);
-        tradingPlatformGUI->Draw();
-        screen->DrawDialogs();
-    }
-    
-    for (vector<Watcher*>::iterator it = watchers.begin(); it != watchers.end(); ++it) {
-        (*it)->Update();
-    }
+int Frame(LFL::Window *W, unsigned clicks, int flag) {
+  Time now = Now();
+  if (FLAGS_lfapp_video) {
+    screen->gd->DrawMode(DrawMode::_2D);
+    tradingPlatformGUI->Draw();
+    screen->DrawDialogs();
+  }
 
-    for (vector<Crawler*>::iterator it = crawlers.begin(); it != crawlers.end(); ++it) {
-        (*it)->crawl();
-        (*it)->scrape();
-    }
+  for (vector<Watcher*>::iterator it = watchers.begin(); it != watchers.end(); ++it) {
+    (*it)->Update();
+  }
 
-    return 0;
+  for (vector<Crawler*>::iterator it = crawlers.begin(); it != crawlers.end(); ++it) {
+    (*it)->Crawl();
+    (*it)->Scrape();
+  }
+
+  return 0;
 }
 
 }; // namespace LFL
 using namespace LFL;
 
 extern "C" int main(int argc, const char *argv[]) {
+  screen->frame_cb = Frame;
+  app->logfilename = StrCat(LFAppDownloadDir(), "market.txt");
+  screen->caption = "Market";
+  screen->width = 640;
+  screen->height = 480;
+  FLAGS_lfapp_camera = 0;
 
-    screen->frame_cb = Frame;
-    app->logfilename = StrCat(LFAppDownloadDir(), "market.txt");
-    screen->caption = "Market";
-    screen->width = 640;
-    screen->height = 480;
-    FLAGS_lfapp_camera = 0;
+  if (app->Create(argc, argv, __FILE__)) { app->Free(); return -1; }
 
-    if (app->Create(argc, argv, __FILE__)) { app->Free(); return -1; }
+  FLAGS_lfapp_audio = FLAGS_lfapp_video = FLAGS_lfapp_input = FLAGS_visualize;
 
-    FLAGS_lfapp_audio = FLAGS_lfapp_video = FLAGS_lfapp_input = FLAGS_visualize;
+  if (app->Init()) { app->Free(); return -1; }
 
-    if (app->Init()) { app->Free(); return -1; }
+  BindMap *binds = screen->binds = new BindMap();
+  binds->Add(Bind(Key::Backquote, Bind::CB(bind(&Shell::console, &app->shell, vector<string>()))));
+  binds->Add(Bind(Key::Escape,    Bind::CB(bind(&Shell::quit,    &app->shell, vector<string>()))));
 
-    BindMap *binds = screen->binds = new BindMap();
-    binds->Add(Bind(Key::Backquote, Bind::CB(bind(&Shell::console, &app->shell, vector<string>()))));
-    binds->Add(Bind(Key::Escape,    Bind::CB(bind(&Shell::quit,    &app->shell, vector<string>()))));
+  if (!FLAGS_quote_dump.empty()) {
+    ProtoFile pf(FLAGS_quote_dump.c_str()); Quote entry;
+    while (pf.Next(&entry)) printf("%s %s %s", localhttptime(Time(entry.value().response_time())).c_str(),
+                                   localhttptime(Time(entry.value().time())).c_str(), entry.DebugString().c_str());
+  }
 
-    if (!FLAGS_quote_dump.empty()) {
-        ProtoFile pf(FLAGS_quote_dump.c_str()); Quote entry;
-        while (pf.Next(&entry)) printf("%s %s %s", localhttptime(Time(entry.value().response_time())).c_str(),
-                                                   localhttptime(Time(entry.value().time())).c_str(), entry.DebugString().c_str());
+  if (!FLAGS_quote_clear_response_text.empty()) {
+    ProtoFile pf(FLAGS_quote_clear_response_text.c_str()), out; Quote entry;
+    out.Open(string(FLAGS_quote_clear_response_text + ".cleared").c_str());
+    while (pf.Next(&entry)) {
+      entry.mutable_value()->mutable_response_text()->clear();
+      out.Add(&entry, 0);
     }
+  }
 
-    if (!FLAGS_quote_clear_response_text.empty()) {
-        ProtoFile pf(FLAGS_quote_clear_response_text.c_str()), out; Quote entry;
-        out.Open(string(FLAGS_quote_clear_response_text + ".cleared").c_str());
-        while (pf.Next(&entry)) {
-            entry.mutable_value()->mutable_response_text()->clear();
-            out.Add(&entry, 0);
-        }
+  if (FLAGS_yahoo_snp500) {
+    yahoo_finance = new MyYahooFinanceApi();
+    crawlers.push_back(yahoo_finance);
+    if (!yahoo_finance->Add("yahoo_finance.queue", "yahoo_finance")) return -1;
+    yahoo_finance->Validate();
+
+    Watcher *watcher = new Watcher(yahoo_finance, "SNP500");
+    watcher->delay_mins = FLAGS_yahoo_delay_mins;
+    watchers.push_back(watcher);
+
+    yahoo_finance->out = &watcher->quote_logger;
+
+    vector<string> symbols;
+    for (int i = 0; i < 500; i++) symbols.push_back(SNP500::Symbol(i));
+    symbols.push_back("^OEX");
+    symbols.push_back("^VIX");
+    symbols.push_back("SPY");
+    symbols.push_back("XLF");
+    symbols.push_back("GLD");
+
+    string symbol_text;
+    for (int i = 0; i < symbols.size(); i++) {
+      symbol_text += string(symbol_text.empty() ? "" : "+") + symbols[i];
+      if (i != symbols.size()-1 && (!i || (i+1) % YahooFinanceApi::MaxSymbolsPerQuery != 0)) continue;
+      watcher->url.push_back(YahooFinanceApi::URL(symbol_text.c_str()));
+      symbol_text.clear();
     }
+  }
 
-    if (FLAGS_yahoo_snp500) {
-        yahoo_finance = new MyYahooFinanceApi();
-        crawlers.push_back(yahoo_finance);
-        if (!yahoo_finance->add("yahoo_finance.queue", "yahoo_finance")) return -1;
-        yahoo_finance->validate();
+  // Return = price[end]/price[beg] - 1;
+  // Daily_ret = price[day1]/price[day0] - 1;
+  // Risk = std_metric = stddev(Daily_ret);
+  // MaxDrawDown = CurrentLowPoint/TrailingHighPoint - 1;
+  // 250 trading days per year
+  // SharpeRatio = E[Reward-RiskFreeReward ie Libor] / stddev(num) = mean(daily_ret) / stddev(daily_ret) * sqrt(250)
 
-        Watcher *watcher = new Watcher(yahoo_finance, "SNP500");
-        watcher->delay_mins = FLAGS_yahoo_delay_mins;
-        watchers.push_back(watcher);
+  if (!watchers.size() && !FLAGS_visualize) return 0;
 
-        yahoo_finance->out = &watcher->quote_logger;
+  if (FLAGS_visualize) {
+    tradingPlatformGUI = new TradingPlatformGUI(screen, screen->Box());
+    marketData = new MarketData(FLAGS_MarketDir.c_str(), "SNP500");
+  }
 
-        vector<string> symbols;
-        for (int i = 0; i < 500; i++) symbols.push_back(SNP500::Symbol(i));
-        symbols.push_back("^OEX");
-        symbols.push_back("^VIX");
-        symbols.push_back("SPY");
-        symbols.push_back("XLF");
-        symbols.push_back("GLD");
-
-        string symbol_text;
-        for (int i = 0; i < symbols.size(); i++) {
-            symbol_text += string(symbol_text.empty() ? "" : "+") + symbols[i];
-            if (i != symbols.size()-1 && (!i || (i+1) % YahooFinanceApi::MaxSymbolsPerQuery != 0)) continue;
-            watcher->url.push_back(YahooFinanceApi::URL(symbol_text.c_str()));
-            symbol_text.clear();
-        }
-    }
-
-    // Return = price[end]/price[beg] - 1;
-    // Daily_ret = price[day1]/price[day0] - 1;
-    // Risk = std_metric = stddev(Daily_ret);
-    // MaxDrawDown = CurrentLowPoint/TrailingHighPoint - 1;
-    // 250 trading days per year
-    // SharpeRatio = E[Reward-RiskFreeReward ie Libor] / stddev(num) = mean(daily_ret) / stddev(daily_ret) * sqrt(250)
-
-    if (!watchers.size() && !FLAGS_visualize) return 0;
-
-    if (FLAGS_visualize) {
-        tradingPlatformGUI = new TradingPlatformGUI(screen, screen->Box());
-        marketData = new MarketData(FLAGS_MarketDir.c_str(), "SNP500");
-    }
-
-    // start our engine
-    return app->Main();
+  // start our engine
+  return app->Main();
 }
