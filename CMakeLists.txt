@@ -1,35 +1,12 @@
 # $Id: CMakeLists.txt 1320 2014-10-26 08:12:52Z justin $
 
-set(LFL_GLES2 1)
-set(LFL_PROTOBUF 1)
-set(LFL_LFLINPUT 1)
-set(LFL_LFLVIDEO 1)
-
-# project lfl import config
-if(LFL_ANDROID)
-elseif(LFL_IPHONE)
-else(LFL_ANDROID)
-if(NOT LFL_HEADLESS)
-  set(LFL_FFMPEG 1)
-  set(LGL_GLEW 1)
-  set(LFL_PORTAUDIO 1)
-  if(NOT WIN32)
-    set(LFL_GLOG 1)
-    set(LFL_LAME 1)
-    set(LFL_X264 1)
-  endif(NOT WIN32)
-endif(NOT LFL_HEADLESS)
-endif(LFL_ANDROID)
-
 lfl_project(market)
-add_subdirectory(../core/lfapp ${CMAKE_CURRENT_BINARY_DIR}/lfapp_obj)
-add_definitions(${LFAPP_DEF})
-include_directories(${LFAPP_INCLUDE} ${LFL_COREBIN} ${CMAKE_CURRENT_BINARY_DIR})
+add_definitions(${LFL_APP_DEF})
+include_directories(${LFL_APP_INCLUDE})
 PROTOBUF_GENERATE_CPP(PROTO_SRC PROTO_HDR market.proto)
-
-if(LFL_ANDROID)
-  add_library(market market.cpp)
-else(LFL_ANDROID)
-  add_executable(market market.cpp ${PROTO_SRC} ../core/web/crawler.pb.cc)
-  target_link_libraries(market ${LFAPP_LIB})
-endif(LFL_ANDROID)
+add_executable(market market.cpp ${PROTO_SRC} ../core/web/crawler.pb.cc)
+target_link_libraries(market ${LFL_APP_LIB} ${LFL_APP_PLATFORM} ${LFL_APP_GRAPHICS}
+                      ${LFL_APP_AUDIO} app_null_camera app_null_matrix app_null_fft
+                      app_simple_resampler app_simple_loader ${LFL_APP_CONVERT}
+                      app_libpng_png app_libjpeg_jpeg app_null_gif app_null_css app_null_ttf
+                      ${BOX2D_LIB})
