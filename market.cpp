@@ -17,18 +17,16 @@
  */
 
 #include "market.pb.h"
-#include "web/crawler.pb.h"
+#include "core/web/crawler.pb.h"
 
-#include "lfapp/lfapp.h"
-#include "lfapp/dom.h"
-#include "lfapp/css.h"
-#include "lfapp/flow.h"
-#include "lfapp/gui.h"
-#include "lfapp/network.h"
+#include "core/app/app.h"
+#include "core/app/gui.h"
+#include "core/app/network.h"
+#include "core/web/browser.h"
 
 #include "market.h"
-#include "web/crawler.h"
-#include "web/yahoo_finance.h"
+#include "core/web/crawler.h"
+#include "core/web/yahoo_finance.h"
 
 namespace LFL {
 DEFINE_string(MarketDir, "/Users/p/lfl/market/", "Market data directory");
@@ -102,15 +100,14 @@ struct Watcher {
 
 struct TradingPlatformGUI : public GUI {
   Widget::Slider scrollbar;
-  TradingPlatformGUI(LFL::Window *W, Box w) : GUI(W, w), scrollbar(this) {}
+  TradingPlatformGUI(LFL::Window *W, Box w) : GUI(w), scrollbar(this) {}
   void Layout() {
     scrollbar.LayoutAttached(box);
-    Flow flow(&box, Fonts::Default(), &child_box);
+    Flow flow(&box, screen->default_font, &child_box);
     flow.p.y -= scrollbar.scrolled * scrollbar.doc_height;
     for (MarketData::SymbolMap::iterator i = marketData->symbol.begin(); i != marketData->symbol.end(); ++i) {
       if (!i->second.chart.geom) {
-        Waveform WF(point(screen->width*.95, screen->height*.2), &Color::white, &i->second);
-        i->second.chart = WF;
+        i->second.chart = Waveform(point(screen->width*.95, screen->height*.2), &Color::white, &i->second);
       }
       flow.AppendText(i->first);
       flow.AppendNewlines(1);
@@ -145,23 +142,26 @@ int Frame(LFL::Window *W, unsigned clicks, int flag) {
 }; // namespace LFL
 using namespace LFL;
 
-extern "C" int main(int argc, const char *argv[]) {
+extern "C" void MyAppCreate() {
+  FLAGS_lfapp_camera = 0;
+  app = new Application();
+  screen = new Window();
   screen->frame_cb = Frame;
-  app->logfilename = StrCat(LFAppDownloadDir(), "market.txt");
   screen->caption = "Market";
   screen->width = 640;
   screen->height = 480;
-  FLAGS_lfapp_camera = 0;
+}
 
-  if (app->Create(argc, argv, __FILE__)) { app->Free(); return -1; }
+extern "C" int MyAppMain(int argc, const char* const* argv) {
+  if (app->Create(argc, argv, __FILE__)) return -1;
 
   FLAGS_lfapp_audio = FLAGS_lfapp_video = FLAGS_lfapp_input = FLAGS_visualize;
+  if (app->Init()) return -1;
 
-  if (app->Init()) { app->Free(); return -1; }
-
-  BindMap *binds = screen->binds = new BindMap();
-  binds->Add(Bind(Key::Backquote, Bind::CB(bind(&Shell::console, &app->shell, vector<string>()))));
-  binds->Add(Bind(Key::Escape,    Bind::CB(bind(&Shell::quit,    &app->shell, vector<string>()))));
+  screen->shell = make_unique<Shell>(nullptr, nullptr, nullptr);
+  BindMap *binds = screen->AddInputController(make_unique<BindMap>());
+  binds->Add(Bind(Key::Backquote, Bind::CB(bind(&Shell::console, screen->shell.get(), vector<string>()))));
+  binds->Add(Bind(Key::Escape,    Bind::CB(bind(&Shell::quit,    screen->shell.get(), vector<string>()))));
 
   if (!FLAGS_quote_dump.empty()) {
     ProtoFile pf(FLAGS_quote_dump.c_str()); Quote entry;

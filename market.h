@@ -63,7 +63,7 @@ struct MarketData {
   MarketData(const char *market_dir, const char *name) {
     string prefix = name + string(".trading_day_");
     DirectoryIter d(market_dir, 0, prefix.c_str(), ".pb");
-    for (const char *fn = d.Next(); Running() && fn; fn = d.Next()) {
+    for (const char *fn = d.Next(); app->run && fn; fn = d.Next()) {
       INFO("MarketData Open ", fn);
       ProtoFile trading_day((market_dir + string(fn)).c_str());
       if (!trading_day.Opened()) { ERROR("open ", fn, " failed"); continue; }
