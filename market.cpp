@@ -100,7 +100,7 @@ struct Watcher {
 
 struct TradingPlatformGUI : public GUI {
   Widget::Slider scrollbar;
-  TradingPlatformGUI(LFL::Window *W, Box w) : GUI(w), scrollbar(this) {}
+  TradingPlatformGUI(LFL::Window *W, Box w) : GUI(W), scrollbar(this) {}
   void Layout() {
     scrollbar.LayoutAttached(box);
     Flow flow(&box, screen->default_font, &child_box);
@@ -121,7 +121,7 @@ struct TradingPlatformGUI : public GUI {
 
 int Frame(LFL::Window *W, unsigned clicks, int flag) {
   Time now = Now();
-  if (FLAGS_lfapp_video) {
+  if (FLAGS_enable_video) {
     screen->gd->DrawMode(DrawMode::_2D);
     tradingPlatformGUI->Draw();
     screen->DrawDialogs();
@@ -142,9 +142,9 @@ int Frame(LFL::Window *W, unsigned clicks, int flag) {
 }; // namespace LFL
 using namespace LFL;
 
-extern "C" void MyAppCreate() {
-  FLAGS_lfapp_camera = 0;
-  app = new Application();
+extern "C" void MyAppCreate(int argc, const char* const* argv) {
+  FLAGS_enable_camera = 0;
+  app = new Application(argc, argv);
   screen = new Window();
   screen->frame_cb = Frame;
   screen->caption = "Market";
@@ -152,13 +152,13 @@ extern "C" void MyAppCreate() {
   screen->height = 480;
 }
 
-extern "C" int MyAppMain(int argc, const char* const* argv) {
-  if (app->Create(argc, argv, __FILE__)) return -1;
+extern "C" int MyAppMain() {
+  if (app->Create(__FILE__)) return -1;
 
-  FLAGS_lfapp_audio = FLAGS_lfapp_video = FLAGS_lfapp_input = FLAGS_visualize;
+  FLAGS_enable_audio = FLAGS_enable_video = FLAGS_enable_input = FLAGS_visualize;
   if (app->Init()) return -1;
 
-  screen->shell = make_unique<Shell>(nullptr, nullptr, nullptr);
+  screen->shell = make_unique<Shell>();
   BindMap *binds = screen->AddInputController(make_unique<BindMap>());
   binds->Add(Bind(Key::Backquote, Bind::CB(bind(&Shell::console, screen->shell.get(), vector<string>()))));
   binds->Add(Bind(Key::Escape,    Bind::CB(bind(&Shell::quit,    screen->shell.get(), vector<string>()))));
