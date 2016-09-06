@@ -103,11 +103,11 @@ struct TradingPlatformGUI : public GUI {
   TradingPlatformGUI(LFL::Window *W, Box w) : GUI(W), scrollbar(this) {}
   void Layout() {
     scrollbar.LayoutAttached(box);
-    Flow flow(&box, screen->default_font, &child_box);
+    Flow flow(&box, root->default_font, &child_box);
     flow.p.y -= scrollbar.scrolled * scrollbar.doc_height;
     for (MarketData::SymbolMap::iterator i = marketData->symbol.begin(); i != marketData->symbol.end(); ++i) {
       if (!i->second.chart.geom) {
-        i->second.chart = Waveform(point(screen->width*.95, screen->height*.2), &Color::white, &i->second);
+        i->second.chart = Waveform(point(root->width*.95, root->height*.2), &Color::white, &i->second);
       }
       flow.AppendText(i->first);
       flow.AppendNewlines(1);
@@ -122,9 +122,9 @@ struct TradingPlatformGUI : public GUI {
 int Frame(LFL::Window *W, unsigned clicks, int flag) {
   Time now = Now();
   if (FLAGS_enable_video) {
-    screen->gd->DrawMode(DrawMode::_2D);
+    W->gd->DrawMode(DrawMode::_2D);
     tradingPlatformGUI->Draw();
-    screen->DrawDialogs();
+    W->DrawDialogs();
   }
 
   for (vector<Watcher*>::iterator it = watchers.begin(); it != watchers.end(); ++it) {
@@ -145,11 +145,11 @@ using namespace LFL;
 extern "C" void MyAppCreate(int argc, const char* const* argv) {
   FLAGS_enable_camera = 0;
   app = new Application(argc, argv);
-  screen = new Window();
-  screen->frame_cb = Frame;
-  screen->caption = "Market";
-  screen->width = 640;
-  screen->height = 480;
+  app->focused = new Window();
+  app->focused->frame_cb = Frame;
+  app->focused->caption = "Market";
+  app->focused->width = 640;
+  app->focused->height = 480;
 }
 
 extern "C" int MyAppMain() {
@@ -158,10 +158,10 @@ extern "C" int MyAppMain() {
   FLAGS_enable_audio = FLAGS_enable_video = FLAGS_enable_input = FLAGS_visualize;
   if (app->Init()) return -1;
 
-  screen->shell = make_unique<Shell>();
-  BindMap *binds = screen->AddInputController(make_unique<BindMap>());
-  binds->Add(Bind(Key::Backquote, Bind::CB(bind(&Shell::console, screen->shell.get(), vector<string>()))));
-  binds->Add(Bind(Key::Escape,    Bind::CB(bind(&Shell::quit,    screen->shell.get(), vector<string>()))));
+  app->focused->shell = make_unique<Shell>(app->focused);
+  BindMap *binds = app->focused->AddInputController(make_unique<BindMap>());
+  binds->Add(Bind(Key::Backquote, Bind::CB(bind(&Shell::console, app->focused->shell.get(), vector<string>()))));
+  binds->Add(Bind(Key::Escape,    Bind::CB(bind(&Shell::quit,    app->focused->shell.get(), vector<string>()))));
 
   if (!FLAGS_quote_dump.empty()) {
     ProtoFile pf(FLAGS_quote_dump.c_str()); Quote entry;
@@ -217,7 +217,7 @@ extern "C" int MyAppMain() {
   if (!watchers.size() && !FLAGS_visualize) return 0;
 
   if (FLAGS_visualize) {
-    tradingPlatformGUI = new TradingPlatformGUI(screen, screen->Box());
+    tradingPlatformGUI = new TradingPlatformGUI(app->focused, app->focused->Box());
     marketData = new MarketData(FLAGS_MarketDir.c_str(), "SNP500");
   }
 
