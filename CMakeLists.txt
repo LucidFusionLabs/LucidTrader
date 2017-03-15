@@ -1,5 +1,9 @@
 # $Id: CMakeLists.txt 1320 2014-10-26 08:12:52Z justin $
 
+if(LFL_MOBILE)
+  return()
+endif()
+
 lfl_project(market)
 PROTOBUF_GENERATE_CPP(PROTO_SRC PROTO_HDR market.proto)
 add_executable(market market.cpp ${PROTO_SRC} ../core/web/crawler.pb.cc)
