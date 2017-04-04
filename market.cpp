@@ -98,9 +98,9 @@ struct Watcher {
   }
 };
 
-struct TradingPlatformGUI : public GUI {
+struct TradingPlatformGUI : public View {
   Widget::Slider scrollbar;
-  TradingPlatformGUI(LFL::Window *W, Box w) : GUI(W), scrollbar(this) {}
+  TradingPlatformGUI(LFL::Window *W, Box w) : View(W), scrollbar(this) {}
   void Layout() {
     scrollbar.LayoutAttached(box);
     Flow flow(&box, root->default_font, &child_box);
@@ -116,7 +116,7 @@ struct TradingPlatformGUI : public GUI {
     }
     scrollbar.SetDocHeight(flow.Height());
   }
-  void Draw() { scrollbar.Update(); GUI::Draw(); }
+  void Draw() { scrollbar.Update(); View::Draw(); }
 } *tradingPlatformGUI = NULL;
 
 int Frame(LFL::Window *W, unsigned clicks, int flag) {
