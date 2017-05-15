@@ -1,5 +1,5 @@
 /*
- * $Id: market.cpp 1336 2014-12-08 09:29:59Z justin $
+ * $Id: trader.cpp 1336 2014-12-08 09:29:59Z justin $
  * Copyright (C) 2009 Lucid Fusion Labs
 
  * This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "market.pb.h"
+#include "trader.pb.h"
 #include "core/web/crawler.pb.h"
 
 #include "core/app/app.h"
@@ -24,7 +24,7 @@
 #include "core/app/network.h"
 #include "core/web/browser.h"
 
-#include "market.h"
+#include "trader.h"
 #include "core/web/crawler.h"
 #include "core/web/yahoo_finance.h"
 
@@ -147,7 +147,7 @@ extern "C" void MyAppCreate(int argc, const char* const* argv) {
   app = new Application(argc, argv);
   app->focused = Window::Create();
   app->focused->frame_cb = Frame;
-  app->focused->caption = "Market";
+  app->focused->caption = "LucidTrader";
   app->focused->width = 640;
   app->focused->height = 480;
 }

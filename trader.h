@@ -1,5 +1,5 @@
 /*
- * $Id: market.h 1309 2014-10-10 19:20:55Z justin $
+ * $Id: trader.h 1309 2014-10-10 19:20:55Z justin $
  * Copyright (C) 2013 Lucid Fusion Labs
 
  * This program is free software: you can redistribute it and/or modify
@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LFL_MARKET_MARKET_H__
-#define LFL_MARKET_MARKET_H__
+#ifndef LFL_TRADER_TRADER_H__
+#define LFL_TRADER_TRADER_H__
 namespace LFL {
 
 struct SNP100 {
@@ -78,4 +78,4 @@ struct MarketData {
 };
 
 }; // namespace LFL
-#endif // LFL_MARKET_MARKET_H__
+#endif // LFL_TRADER_TRADER_H__
