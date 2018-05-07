@@ -20,7 +20,7 @@
 #include "core/web/crawler.pb.h"
 
 #include "core/app/app.h"
-#include "core/app/gui.h"
+#include "core/app/gl/view.h"
 #include "core/app/network.h"
 #include "core/web/browser.h"
 
